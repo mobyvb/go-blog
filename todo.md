@@ -1,0 +1,1 @@
+Web page where you can easily edit your blog.
