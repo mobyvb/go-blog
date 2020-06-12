@@ -3,11 +3,9 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
-	"path/filepath"
 
-	"blog.test/blog"
+	"github.com/mobyvb/go-blog/blog"
 )
 
 func main() {
@@ -26,14 +24,8 @@ func main() {
 		fmt.Fprintf(os.Stderr, "failed to create dir %q: %v\n", *output, err)
 	}
 
-	for _, page := range b.Pages {
-		html := page.HTML()
-
-		path := filepath.Join(*output, string(page.Slug)+".html")
-		err := ioutil.WriteFile(path, []byte(html), 0644)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "failed to write file %q: %v\n", path, err)
-			os.Exit(1)
-		}
+	err = b.WriteToDir(*output)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to write blog %q: %v\n", *output, err)
 	}
 }
