@@ -16,38 +16,9 @@ func main() {
 
 	flag.Parse()
 
-	var pages []*blog.Page
-
-	err := filepath.Walk(*input, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if filepath.Ext(path) != ".txt" {
-			return nil
-		}
-
-		content, err := ioutil.ReadFile(path)
-		if err != nil {
-			return fmt.Errorf("unable to read file: %w", err)
-		}
-
-		relpath, err := filepath.Rel(*input, path)
-		if err != nil {
-			return fmt.Errorf("unable to get relative path %q : %q: %w", *input, path, err)
-		}
-
-		slug := blog.SlugFromPath(relpath)
-		page, err := blog.ParsePageString(slug, string(content))
-		if err != nil {
-			return fmt.Errorf("unable to parse content %q: %w", path, err)
-		}
-
-		pages = append(pages, page)
-
-		return nil
-	})
+	b, err := blog.BlogFromDir(*input)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to parse input: %v\n", err)
+		fmt.Fprintf(os.Stderr, "failed to parse blog: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -55,7 +26,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "failed to create dir %q: %v\n", *output, err)
 	}
 
-	for _, page := range pages {
+	for _, page := range b.Pages {
 		html := page.HTML()
 
 		path := filepath.Join(*output, string(page.Slug)+".html")
