@@ -3,11 +3,11 @@ package main
 import (
 	"flag"
 	"fmt"
-	"html"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
+
+	"blog.test/blog"
 )
 
 func main() {
@@ -16,7 +16,7 @@ func main() {
 
 	flag.Parse()
 
-	var pages []*Page
+	var pages []*blog.Page
 
 	err := filepath.Walk(*input, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -36,8 +36,8 @@ func main() {
 			return fmt.Errorf("unable to get relative path %q : %q: %w", *input, path, err)
 		}
 
-		slug := SlugFromPath(relpath)
-		page, err := ParseString(slug, string(content))
+		slug := blog.SlugFromPath(relpath)
+		page, err := blog.ParsePageString(slug, string(content))
 		if err != nil {
 			return fmt.Errorf("unable to parse content %q: %w", path, err)
 		}
@@ -65,82 +65,4 @@ func main() {
 			os.Exit(1)
 		}
 	}
-}
-
-type Slug string
-
-func SlugFromPath(path string) Slug {
-	name := path[:len(path)-len(filepath.Ext(path))]
-	return Slug(strings.ToLower(name))
-}
-
-type Page struct {
-	Slug       Slug
-	Title      string
-	Paragraphs []string
-}
-
-func ParseString(slug Slug, s string) (*Page, error) {
-	page := &Page{
-		Slug: slug,
-	}
-
-	for _, block := range strings.Split(s, "\n\n") {
-		switch {
-		case strings.HasPrefix(block, "#"):
-			title := strings.TrimSpace(strings.TrimPrefix(block, "#"))
-			if title == "" {
-				return nil, fmt.Errorf("invalid #")
-			}
-
-			if page.Title != "" {
-				return nil, fmt.Errorf("duplicate title")
-			}
-
-			page.Title = title
-		default:
-			paragraph := strings.TrimSpace(block)
-			paragraph = strings.ReplaceAll(paragraph, "\n", " ")
-			page.Paragraphs = append(page.Paragraphs, paragraph)
-		}
-	}
-
-	return page, nil
-}
-
-func (page *Page) HTML() string {
-	var s strings.Builder
-	page.WriteHTMLTo(&s)
-	return s.String()
-}
-
-func (page *Page) WriteHTMLTo(s *strings.Builder) {
-	s.WriteString(`<!DOCTYPE html>`)
-
-	s.WriteString(`<html>`)
-	defer s.WriteString(`</html>`)
-
-	(func() {
-		s.WriteString(`<head>`)
-		defer s.WriteString(`</head>`)
-
-		s.WriteString("<title>")
-		s.WriteString(html.EscapeString(page.Title))
-		s.WriteString("</title>")
-	})()
-
-	(func() {
-		s.WriteString(`<body>`)
-		defer s.WriteString(`</body>`)
-
-		s.WriteString("<h1>")
-		s.WriteString(html.EscapeString(page.Title))
-		s.WriteString("</h1>")
-
-		for _, paragraph := range page.Paragraphs {
-			s.WriteString("<p>")
-			s.WriteString(html.EscapeString(paragraph))
-			s.WriteString("</p>")
-		}
-	})()
 }
