@@ -9,12 +9,13 @@ import (
 )
 
 func main() {
+	title := flag.String("title", "Bloggy", "blog title")
 	input := flag.String("content", "./content", "content directory")
 	output := flag.String("build", "./build", "build of html")
 
 	flag.Parse()
 
-	b, err := blog.BlogFromDir(*input)
+	b, err := blog.BlogFromDir(*title, *input)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to parse blog: %v\n", err)
 		os.Exit(1)

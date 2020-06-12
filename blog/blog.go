@@ -8,11 +8,14 @@ import (
 )
 
 type Blog struct {
+	Title string
 	Pages []*Page
 }
 
-func BlogFromDir(dir string) (*Blog, error) {
-	blog := &Blog{}
+func BlogFromDir(title string, dir string) (*Blog, error) {
+	blog := &Blog{
+		Title: title,
+	}
 
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
