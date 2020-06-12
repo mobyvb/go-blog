@@ -45,17 +45,3 @@ func BlogFromDir(dir string) (*Blog, error) {
 
 	return blog, err
 }
-
-func (blog *Blog) WriteToDir(output string) error {
-	for _, page := range blog.Pages {
-		html := page.HTML()
-
-		path := filepath.Join(output, string(page.Slug)+".html")
-		err := ioutil.WriteFile(path, []byte(html), 0644)
-		if err != nil {
-			return fmt.Errorf("failed to write file %q: %w", path, err)
-		}
-	}
-
-	return nil
-}
