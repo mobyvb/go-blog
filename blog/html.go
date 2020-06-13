@@ -13,7 +13,8 @@ func (blog *Blog) ServeHTTP() error {
 	}
 
 	for _, page := range blog.Pages {
-		http.HandleFunc("/"+string(page.Slug), func(w http.ResponseWriter, r *http.Request) {
+		page := page
+		http.HandleFunc("/"+page.Path(), func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "%s", render.Page(page))
 		})
 	}
