@@ -11,7 +11,6 @@ import (
 func main() {
 	title := flag.String("title", "Bloggy", "blog title")
 	input := flag.String("content", "./content", "content directory")
-	output := flag.String("build", "./build", "build of html")
 
 	flag.Parse()
 
@@ -21,12 +20,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := os.MkdirAll(*output, 0644); err != nil {
-		fmt.Fprintf(os.Stderr, "failed to create dir %q: %v\n", *output, err)
-	}
-
-	err = b.WriteToDir(*output)
+	err = b.ServeHTTP()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to write blog %q: %v\n", *output, err)
+		fmt.Fprintf(os.Stderr, "failed to start server: %v\n", err)
 	}
 }

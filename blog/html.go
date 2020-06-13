@@ -3,40 +3,27 @@ package blog
 import (
 	"fmt"
 	"html"
-	"io/ioutil"
-	"path/filepath"
+	"net/http"
 	"strings"
 )
 
-func (blog *Blog) WriteToDir(output string) error {
+func (blog *Blog) ServeHTTP() error {
 	render := &Render{
 		Blog: blog,
 	}
 
 	for _, page := range blog.Pages {
-		html := render.Page(page)
-		err := WritePageFile(output, page.Path(), html)
-		if err != nil {
-			return fmt.Errorf("failed to write page %q: %w", page.Slug, err)
-		}
+		http.HandleFunc("/"+string(page.Slug), func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "%s", render.Page(page))
+		})
 	}
 
-	html := render.TableOfContent()
-	err := WritePageFile(output, "index.html", html)
-	if err != nil {
-		return fmt.Errorf("failed to table of content: %w", err)
-	}
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "%s", render.TableOfContents())
+	})
 
-	return nil
-}
-
-func WritePageFile(dir, local string, html string) error {
-	path := filepath.Join(dir, local)
-	err := ioutil.WriteFile(path, []byte(html), 0644)
-	if err != nil {
-		return fmt.Errorf("failed to write %q: %w", path, err)
-	}
-	return nil
+	fmt.Println("Listening on port 8080")
+	return http.ListenAndServe(":8080", nil)
 }
 
 type Render struct {
@@ -59,7 +46,7 @@ func (render *Render) Page(page *Page) string {
 	})
 }
 
-func (render *Render) TableOfContent() string {
+func (render *Render) TableOfContents() string {
 	return render.HTML(render.Blog.Title, func(s *strings.Builder) {
 		s.WriteString("<h1>")
 		s.WriteString(html.EscapeString(render.Blog.Title))
@@ -74,7 +61,7 @@ func (render *Render) Nav(s *strings.Builder) {
 	defer s.WriteString("</ul>")
 
 	s.WriteString("<li>")
-	s.WriteString("<a href='index.html'>Table of Content</a>")
+	s.WriteString("<a href='/'>Table of Contents</a>")
 	s.WriteString("</li>")
 
 	for _, page := range render.Blog.Pages {
