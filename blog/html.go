@@ -14,7 +14,7 @@ func (blog *Blog) ServeHTTP() error {
 
 	for _, page := range blog.Pages {
 		page := page
-		http.HandleFunc("/"+page.Path(), func(w http.ResponseWriter, r *http.Request) {
+		http.HandleFunc("/posts/"+page.Path(), func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "%s", render.Page(page))
 		})
 	}
@@ -67,7 +67,7 @@ func (render *Render) Nav(s *strings.Builder) {
 
 	for _, page := range render.Blog.Pages {
 		s.WriteString("<li>")
-		s.WriteString("<a href='" + page.Path() + "'>")
+		s.WriteString("<a href='/posts/" + page.Path() + "'>")
 		s.WriteString(html.EscapeString(page.Title))
 		s.WriteString("</a>")
 		s.WriteString("</li>")
