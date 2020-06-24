@@ -14,7 +14,7 @@ type Page struct {
 type Slug string
 
 func (page *Page) Path() string {
-	return string(page.Slug)
+	return filepath.Join("/posts", string(page.Slug))
 }
 
 func SlugFromPath(path string) Slug {

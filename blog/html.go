@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"html"
 	"net/http"
+	"path/filepath"
 	"strings"
 )
 
@@ -14,8 +15,12 @@ func (blog *Blog) ServeHTTP() error {
 
 	for _, page := range blog.Pages {
 		page := page
-		http.HandleFunc("/posts/"+page.Path(), func(w http.ResponseWriter, r *http.Request) {
+		http.HandleFunc(page.Path(), func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "%s", render.Page(page))
+		})
+
+		http.HandleFunc(filepath.Join(page.Path(), "edit"), func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "%s", render.EditPage(page))
 		})
 	}
 
@@ -44,6 +49,33 @@ func (render *Render) Page(page *Page) string {
 			s.WriteString(html.EscapeString(paragraph))
 			s.WriteString("</p>")
 		}
+
+		s.WriteString("<a href='" + filepath.Join(page.Path(), "edit") + "'>")
+		s.WriteString("Edit post")
+		s.WriteString("</a>")
+	})
+}
+
+func (render *Render) EditPage(page *Page) string {
+	return render.HTML(page.Title, func(s *strings.Builder) {
+		render.Nav(s)
+
+		s.WriteString("<form action='todo'>")
+		s.WriteString("<input type='text' value='")
+		s.WriteString(html.EscapeString(page.Title))
+		s.WriteString("'><br>")
+
+		s.WriteString("<textarea cols=100 rows=20>")
+		for i, paragraph := range page.Paragraphs {
+			s.WriteString(html.EscapeString(paragraph))
+			if i+1 < len(page.Paragraphs) {
+				s.WriteString("\n\n")
+			}
+		}
+		s.WriteString("</textarea><br>")
+
+		s.WriteString("<input type='submit' value='update'>")
+		s.WriteString("</form>")
 	})
 }
 
@@ -67,7 +99,7 @@ func (render *Render) Nav(s *strings.Builder) {
 
 	for _, page := range render.Blog.Pages {
 		s.WriteString("<li>")
-		s.WriteString("<a href='/posts/" + page.Path() + "'>")
+		s.WriteString("<a href='" + page.Path() + "'>")
 		s.WriteString(html.EscapeString(page.Title))
 		s.WriteString("</a>")
 		s.WriteString("</li>")
