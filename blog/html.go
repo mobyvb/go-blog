@@ -5,7 +5,10 @@ import (
 	"net/http"
 
 	"github.com/mobyvb/go-blog/htmlgenerate"
+	"github.com/mobyvb/go-blog/htmlgenerate2"
 )
+
+const generateMethod = 1
 
 func (blog *Blog) ServeHTTP(port string) error {
 	render := &Render{
@@ -50,30 +53,38 @@ type Render struct {
 }
 
 func (render *Render) RenderPage(page *Page) (string, error) {
-	navList, err := render.GetNavElement()
-	if err != nil {
-		return "", err
-	}
-
-	header, err := htmlgenerate.NewHTMLElement("h1", page.Title, nil, nil)
-	if err != nil {
-		return "", err
-	}
-
-	pageElements := []*htmlgenerate.HTMLElement{navList, header}
-	for _, paragraph := range page.Paragraphs {
-		newP, err := htmlgenerate.NewHTMLElement("p", paragraph, nil, nil)
+	if generateMethod == 0 {
+		navList, err := render.GetNavElement()
 		if err != nil {
 			return "", err
 		}
-		pageElements = append(pageElements, newP)
-	}
 
-	htmlPage, err := htmlgenerate.NewPage(page.Title, pageElements)
-	if err != nil {
-		return "", err
+		header, err := htmlgenerate.NewHTMLElement("h1", page.Title, nil, nil)
+		if err != nil {
+			return "", err
+		}
+
+		pageElements := []*htmlgenerate.HTMLElement{navList, header}
+		for _, paragraph := range page.Paragraphs {
+			newP, err := htmlgenerate.NewHTMLElement("p", paragraph, nil, nil)
+			if err != nil {
+				return "", err
+			}
+			pageElements = append(pageElements, newP)
+		}
+
+		htmlPage, err := htmlgenerate.NewPage(page.Title, pageElements)
+		if err != nil {
+			return "", err
+		}
+		return htmlPage.String(), nil
+	} else {
+		tocElements := []htmlgenerate2.TOCItem{htmlgenerate2.NewTOCItem("/", "Table of Contents")}
+		for _, navPage := range render.Blog.Pages {
+			tocElements = append(tocElements, htmlgenerate2.NewTOCItem(navPage.Path(), navPage.Title))
+		}
+		return htmlgenerate2.GeneratePost(page.Title, page.Paragraphs, tocElements)
 	}
-	return htmlPage.String(), nil
 }
 
 /*
@@ -102,21 +113,29 @@ func (render *Render) EditPage(page *Page) string {
 */
 
 func (render *Render) RenderTableOfContents() (string, error) {
-	header, err := htmlgenerate.NewHTMLElement("h1", render.Blog.Title, nil, nil)
-	if err != nil {
-		return "", err
-	}
+	if generateMethod == 0 {
+		header, err := htmlgenerate.NewHTMLElement("h1", render.Blog.Title, nil, nil)
+		if err != nil {
+			return "", err
+		}
 
-	navList, err := render.GetNavElement()
-	if err != nil {
-		return "", err
-	}
+		navList, err := render.GetNavElement()
+		if err != nil {
+			return "", err
+		}
 
-	htmlPage, err := htmlgenerate.NewPage(render.Blog.Title, []*htmlgenerate.HTMLElement{header, navList})
-	if err != nil {
-		return "", err
+		htmlPage, err := htmlgenerate.NewPage(render.Blog.Title, []*htmlgenerate.HTMLElement{header, navList})
+		if err != nil {
+			return "", err
+		}
+		return htmlPage.String(), nil
+	} else {
+		tocElements := []htmlgenerate2.TOCItem{htmlgenerate2.NewTOCItem("/", "Table of Contents")}
+		for _, navPage := range render.Blog.Pages {
+			tocElements = append(tocElements, htmlgenerate2.NewTOCItem(navPage.Path(), navPage.Title))
+		}
+		return htmlgenerate2.GenerateTableOfContents(render.Blog.Title, tocElements)
 	}
-	return htmlPage.String(), nil
 }
 
 func (render *Render) GetNavElement() (*htmlgenerate.HTMLElement, error) {
