@@ -2,60 +2,81 @@ package blog
 
 import (
 	"fmt"
-	"html"
 	"net/http"
-	"path/filepath"
-	"strings"
+
+	"github.com/mobyvb/go-blog/htmlgenerate"
 )
 
-func (blog *Blog) ServeHTTP() error {
+func (blog *Blog) ServeHTTP(port string) error {
 	render := &Render{
 		Blog: blog,
 	}
 
-	for _, page := range blog.Pages {
-		page := page
-		http.HandleFunc(page.Path(), func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprintf(w, "%s", render.Page(page))
-		})
+	// TODO separate port for editing
+	http.HandleFunc(PagePrefix, func(w http.ResponseWriter, r *http.Request) {
+		// TODO this is ugly and probably not reliable make it better
+		pagePath := r.URL.EscapedPath()
 
-		http.HandleFunc(filepath.Join(page.Path(), "edit"), func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprintf(w, "%s", render.EditPage(page))
-		})
-	}
-
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "%s", render.TableOfContents())
+		// TODO make this more efficient
+		for _, page := range blog.Pages {
+			// TODO compare page name instead of path
+			if pagePath == page.Path() {
+				pageString, err := render.RenderPage(page)
+				if err != nil {
+					fmt.Fprintf(w, "error generating page: %w", err)
+					return
+				}
+				fmt.Fprintf(w, "%s", pageString)
+				break
+			}
+		}
 	})
 
-	fmt.Println("Listening on port 8080")
-	return http.ListenAndServe(":8080", nil)
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		tocString, err := render.RenderTableOfContents()
+		if err != nil {
+			fmt.Fprintf(w, "error generating page: %w", err)
+			return
+		}
+		fmt.Fprintf(w, "%s", tocString)
+	})
+
+	fmt.Println("Listening on port " + port)
+	return http.ListenAndServe(port, nil)
 }
 
 type Render struct {
 	Blog *Blog
 }
 
-func (render *Render) Page(page *Page) string {
-	return render.HTML(page.Title, func(s *strings.Builder) {
-		render.Nav(s)
+func (render *Render) RenderPage(page *Page) (string, error) {
+	navList, err := render.GetNavElement()
+	if err != nil {
+		return "", err
+	}
 
-		s.WriteString("<h1>")
-		s.WriteString(html.EscapeString(page.Title))
-		s.WriteString("</h1>")
+	header, err := htmlgenerate.NewHTMLElement("h1", page.Title, nil, nil)
+	if err != nil {
+		return "", err
+	}
 
-		for _, paragraph := range page.Paragraphs {
-			s.WriteString("<p>")
-			s.WriteString(html.EscapeString(paragraph))
-			s.WriteString("</p>")
+	pageElements := []*htmlgenerate.HTMLElement{navList, header}
+	for _, paragraph := range page.Paragraphs {
+		newP, err := htmlgenerate.NewHTMLElement("p", paragraph, nil, nil)
+		if err != nil {
+			return "", err
 		}
+		pageElements = append(pageElements, newP)
+	}
 
-		s.WriteString("<a href='" + filepath.Join(page.Path(), "edit") + "'>")
-		s.WriteString("Edit post")
-		s.WriteString("</a>")
-	})
+	htmlPage, err := htmlgenerate.NewPage(page.Title, pageElements)
+	if err != nil {
+		return "", err
+	}
+	return htmlPage.String(), nil
 }
 
+/*
 func (render *Render) EditPage(page *Page) string {
 	return render.HTML(page.Title, func(s *strings.Builder) {
 		render.Nav(s)
@@ -78,55 +99,39 @@ func (render *Render) EditPage(page *Page) string {
 		s.WriteString("</form>")
 	})
 }
+*/
 
-func (render *Render) TableOfContents() string {
-	return render.HTML(render.Blog.Title, func(s *strings.Builder) {
-		s.WriteString("<h1>")
-		s.WriteString(html.EscapeString(render.Blog.Title))
-		s.WriteString("</h1>")
-
-		render.Nav(s)
-	})
-}
-
-func (render *Render) Nav(s *strings.Builder) {
-	s.WriteString("<ul>")
-	defer s.WriteString("</ul>")
-
-	s.WriteString("<li>")
-	s.WriteString("<a href='/'>Table of Contents</a>")
-	s.WriteString("</li>")
-
-	for _, page := range render.Blog.Pages {
-		s.WriteString("<li>")
-		s.WriteString("<a href='" + page.Path() + "'>")
-		s.WriteString(html.EscapeString(page.Title))
-		s.WriteString("</a>")
-		s.WriteString("</li>")
+func (render *Render) RenderTableOfContents() (string, error) {
+	header, err := htmlgenerate.NewHTMLElement("h1", render.Blog.Title, nil, nil)
+	if err != nil {
+		return "", err
 	}
+
+	navList, err := render.GetNavElement()
+	if err != nil {
+		return "", err
+	}
+
+	htmlPage, err := htmlgenerate.NewPage(render.Blog.Title, []*htmlgenerate.HTMLElement{header, navList})
+	if err != nil {
+		return "", err
+	}
+	return htmlPage.String(), nil
 }
 
-func (render *Render) HTML(title string, body func(*strings.Builder)) string {
-	var s strings.Builder
-	(func() {
-		s.WriteString(`<!DOCTYPE html>`)
+func (render *Render) GetNavElement() (*htmlgenerate.HTMLElement, error) {
+	homeLink, err := htmlgenerate.NewLink("Table of Contents", "/")
+	if err != nil {
+		return nil, err
+	}
 
-		s.WriteString(`<html>`)
-		defer s.WriteString(`</html>`)
-
-		(func() {
-			s.WriteString(`<head>`)
-			defer s.WriteString(`</head>`)
-
-			s.WriteString("<title>")
-			s.WriteString(html.EscapeString(title))
-			s.WriteString("</title>")
-		})()
-
-		s.WriteString(`<body>`)
-		defer s.WriteString(`</body>`)
-		body(&s)
-	})()
-
-	return s.String()
+	navLinks := []*htmlgenerate.HTMLElement{homeLink}
+	for _, navPage := range render.Blog.Pages {
+		newLink, err := htmlgenerate.NewLink(navPage.Title, navPage.Path())
+		if err != nil {
+			return nil, err
+		}
+		navLinks = append(navLinks, newLink)
+	}
+	return htmlgenerate.NewList(navLinks)
 }

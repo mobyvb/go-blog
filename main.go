@@ -20,7 +20,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = b.ServeHTTP()
+	err = b.ServeHTTP(":8080")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to start server: %v\n", err)
 	}

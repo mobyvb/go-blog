@@ -12,6 +12,8 @@ type Blog struct {
 	Pages []*Page
 }
 
+// TODO add and rmeove pages
+// TODO does it make sense to reload entire blog if only one page has changed? Should we update individual pages instead?
 func BlogFromDir(title string, dir string) (*Blog, error) {
 	blog := &Blog{
 		Title: title,
