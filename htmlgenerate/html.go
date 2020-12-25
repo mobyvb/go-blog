@@ -61,6 +61,7 @@ func (e *HTMLElement) String() (htmlString string) {
 
 	htmlString += "<" + e.tag
 
+	// js escape string in html template package
 	for _, attributeValue := range e.attributeValuePairs {
 		htmlString += " " + html.EscapeString(attributeValue.attribute) + "="
 		htmlString += "\"" + html.EscapeString(attributeValue.value) + "\""

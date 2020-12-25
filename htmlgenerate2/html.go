@@ -7,6 +7,9 @@ import (
 	"strings"
 )
 
+// TODO can this code be generated?
+// maybe a new package that does code generation
+
 var (
 	// TODO configure this in main.go
 	templateDir = "templates"
